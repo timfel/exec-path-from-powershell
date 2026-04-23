@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Emacs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emacs-nox
+      - name: Run package quality checks
+        run: emacs -Q --batch -l scripts/quality-check.el exec-path-from-powershell.el
+
+  melpa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MELPA build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emacs-nox git make
+      - name: Clone MELPA
+        run: git clone --depth 1 https://github.com/melpa/melpa.git /tmp/melpa
+      - name: Write temporary MELPA recipe
+        run: |
+          cat > /tmp/melpa/recipes/exec-path-from-powershell <<EOF2
+          (exec-path-from-powershell
+           :fetcher github
+           :repo "${GITHUB_REPOSITORY}")
+          EOF2
+      - name: Build MELPA package
+        working-directory: /tmp/melpa
+        run: make USER_CONFIG='"(setq package-build-badge-data nil)"' recipes/exec-path-from-powershell
+      - name: Install MELPA package in sandbox
+        working-directory: /tmp/melpa
+        run: make sandbox INSTALL=exec-path-from-powershell
+      - name: Build MELPA Stable package
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: /tmp/melpa
+        run: MELPA_CHANNEL=stable make USER_CONFIG='"(setq package-build-badge-data nil)"' recipes/exec-path-from-powershell
+      - name: Install MELPA Stable package in sandbox
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: /tmp/melpa
+        run: MELPA_CHANNEL=stable make sandbox INSTALL=exec-path-from-powershell
