@@ -1,21 +1,20 @@
 # exec-path-from-powershell
 
-`exec-path-from-powershell` provides a PowerShell-backed variant of the
-`exec-path-from-shell` API for Emacs on Windows.
+`exec-path-from-powershell` makes `exec-path-from-shell` work with
+`pwsh.exe` and `powershell.exe` on Windows.
 
-If `exec-path-from-shell-shell-name` is set to `powershell.exe` or `pwsh.exe`,
-the package advises `exec-path-from-shell-getenvs` and
-`exec-path-from-shell-printf` to fetch environment values through PowerShell
-instead of a POSIX shell.
+When the library is loaded and `exec-path-from-shell-shell-name` points at
+PowerShell, calls to `exec-path-from-shell-getenvs` and
+`exec-path-from-shell-printf` are handled through PowerShell instead of a
+POSIX shell.
 
 It can also merge the Visual Studio developer environment into the imported
-variables when desired.
+variables.
 
 ## Installation
 
-Once the MELPA recipe is merged, install the package and set
-`exec-path-from-shell-shell-name` to PowerShell.  Loading
-`exec-path-from-powershell` installs the integration automatically:
+Install `exec-path-from-powershell` and `exec-path-from-shell`, then point
+`exec-path-from-shell` at PowerShell:
 
 ```elisp
 (require 'exec-path-from-powershell)
@@ -23,7 +22,7 @@ Once the MELPA recipe is merged, install the package and set
 (setq exec-path-from-shell-shell-name "pwsh.exe")
 ```
 
-With `use-package`, the usual shape is:
+With `use-package`:
 
 ```elisp
 (use-package exec-path-from-powershell
@@ -31,45 +30,21 @@ With `use-package`, the usual shape is:
   (exec-path-from-shell-shell-name "pwsh.exe"))
 ```
 
-## Development
+Then use `exec-path-from-shell` as usual, for example:
 
-This repository is set up to be developed next to a sibling MELPA checkout:
-
-```text
-~/dev/epfps/
-  exec-path-from-powershell/
-  melpa/
+```elisp
+(exec-path-from-shell-initialize)
 ```
 
-Run the package lint, documentation, byte-compilation, and ERT checks with:
+## Visual Studio Environment
 
-```sh
-make check
-```
+If `exec-path-from-powershell-includes-visual-studio-environment` is non-nil,
+the package also imports variables from the latest supported Visual Studio
+developer shell.
 
-That target bootstraps local dependencies into `.cache/elpa` and runs
-`checkdoc`, `package-lint`, `flycheck-package`, byte-compilation, and the ERT
-suite in an isolated `HOME`.
+Relevant options:
 
-To validate the package through the sibling MELPA checkout, use:
-
-```sh
-make melpa-check
-make melpa-sandbox
-```
-
-Stable validation is also wired up for tagged releases:
-
-```sh
-make melpa-stable-check
-make melpa-stable-sandbox
-```
-
-## MELPA Readiness Checklist
-
-- [x] Main library header includes lexical binding, package metadata, and GPL boilerplate.
-- [x] Loading the package installs idempotent advice automatically; `exec-path-from-powershell-disable` remains available for debugging.
-- [x] Repository includes `README.md`, `LICENSE`, a canonical MELPA recipe, and batch scripts for local checks.
-- [x] Local `make check` covers `checkdoc`, `package-lint`, `flycheck-package`, byte-compilation, and ERT.
-- [x] GitHub Actions runs the local check suite across multiple Emacs versions and validates the MELPA recipe.
-- [x] Stable builds are expected to come from Git tags such as `v1.0`, `v1.1`, and so on.
+- `exec-path-from-powershell-includes-visual-studio-environment`
+- `exec-path-from-powershell-load-profile`
+- `exec-path-from-powershell-visual-studio-arch`
+- `exec-path-from-powershell-visual-studio-host-arch`
