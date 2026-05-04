@@ -1,53 +1,55 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
+  pull_request:
 
 jobs:
-  quality:
+  check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        emacs-version: ['27.1', '28.2', '29.4']
+    env:
+      HOME: ${{ github.workspace }}/.home
     steps:
       - uses: actions/checkout@v4
-      - name: Install Emacs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y emacs-nox
-      - name: Run package quality checks
-        run: emacs -Q --batch -l scripts/quality-check.el exec-path-from-powershell.el
+      - uses: purcell/setup-emacs@master
+        with:
+          version: ${{ matrix.emacs-version }}
+      - name: Prepare isolated HOME
+        run: mkdir -p "$HOME/.emacs.d"
+      - name: Run package checks
+        run: make check
 
   melpa:
     runs-on: ubuntu-latest
+    env:
+      HOME: ${{ github.workspace }}/.home
     steps:
       - uses: actions/checkout@v4
-      - name: Install MELPA build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y emacs-nox git make
+      - uses: purcell/setup-emacs@master
+        with:
+          version: '29.4'
+      - name: Prepare isolated HOME
+        run: mkdir -p "$HOME/.emacs.d"
       - name: Clone MELPA
-        run: git clone --depth 1 https://github.com/melpa/melpa.git /tmp/melpa
-      - name: Write temporary MELPA recipe
-        run: |
-          cat > /tmp/melpa/recipes/exec-path-from-powershell <<EOF2
-          (exec-path-from-powershell
-           :fetcher github
-           :repo "${GITHUB_REPOSITORY}")
-          EOF2
-      - name: Build MELPA package
-        working-directory: /tmp/melpa
-        run: make USER_CONFIG='"(setq package-build-badge-data nil)"' recipes/exec-path-from-powershell
-      - name: Install MELPA package in sandbox
-        working-directory: /tmp/melpa
-        run: make sandbox INSTALL=exec-path-from-powershell
-      - name: Build MELPA Stable package
+        run: git clone --depth 1 https://github.com/timfel/melpa.git ../melpa
+      - name: Validate MELPA package
+        run: make melpa-check melpa-sandbox
+      - name: Validate MELPA Stable package
         if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: /tmp/melpa
-        run: MELPA_CHANNEL=stable make USER_CONFIG='"(setq package-build-badge-data nil)"' recipes/exec-path-from-powershell
-      - name: Install MELPA Stable package in sandbox
-        if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: /tmp/melpa
-        run: MELPA_CHANNEL=stable make sandbox INSTALL=exec-path-from-powershell
+        run: make melpa-stable-check melpa-stable-sandbox
+      - name: Upload check artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: melpa-logs
+          path: |
+            ../melpa/logs
+            .cache
+            .home
+          if-no-files-found: ignore

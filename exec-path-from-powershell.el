@@ -1,12 +1,13 @@
-;;; exec-path-from-powershell.el --- Get env vars from PowerShell -*- lexical-binding: t; -*-
+;;; exec-path-from-powershell.el --- Import environment variables via PowerShell  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Tim Felgentreff
 ;;
 ;; Author: Tim Felgentreff <timfelgentreff@gmail.com>
+;; Maintainer: Tim Felgentreff <timfelgentreff@gmail.com>
 ;; URL: https://github.com/timfel/exec-path-from-powershell
+;; Version: 1.0
 ;; Keywords: processes, tools, windows, environment
-;; Package-Version: 1.0
-;; Package-Requires: ((emacs "24.4") (exec-path-from-shell "2.2"))
+;; Package-Requires: ((emacs "27.1") (exec-path-from-shell "2.2"))
 ;;
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -23,9 +24,21 @@
 
 ;;; Commentary:
 
-;; Provide a PowerShell-backed variant of the exec-path-from-shell API.  This
-;; annotates exec-path-from-shell.el and if exec-path-from-shell-shell-name is
-;; either powershell.exe or pwsh.exe redirects to the functions here.
+;; This package adds PowerShell support to the `exec-path-from-shell'
+;; workflow on Windows.  When enabled, calls made through
+;; `exec-path-from-shell-getenvs' and `exec-path-from-shell-printf' are
+;; redirected to PowerShell whenever `exec-path-from-shell-shell-name'
+;; names `pwsh.exe' or `powershell.exe'.
+;;
+;; Typical setup:
+;;
+;;   (require 'exec-path-from-shell)
+;;   (require 'exec-path-from-powershell)
+;;   (setq exec-path-from-shell-shell-name "pwsh.exe")
+;;   (exec-path-from-powershell-enable)
+;;
+;; The package can also merge the Visual Studio developer environment
+;; into the imported variables when desired.
 
 ;;; Code:
 
@@ -75,12 +88,15 @@
   :type 'string
   :group 'exec-path-from-powershell)
 
-(defvar eshell-path-env)
-
 (defun exec-path-from-powershell--debug (msg &rest args)
   "Print MSG and ARGS like `message', but only if debug output is enabled."
   (when exec-path-from-shell-debug
     (apply #'message msg args)))
+
+(defun exec-path-from-powershell--powershell-shell-p ()
+  "Return non-nil when `exec-path-from-shell-shell-name' names PowerShell."
+  (member (file-name-nondirectory exec-path-from-shell-shell-name)
+          '("pwsh.exe" "powershell.exe")))
 
 (defmacro exec-path-from-powershell--warn-duration (&rest body)
   "Evaluate BODY and warn if execution duration exceeds a time limit.
@@ -329,7 +345,7 @@ When INCLUDE-VS is non-nil, merge the Visual Studio developer environment."
 (defun exec-path-from-powershell--printf (oldfunc str &optional args)
   "Return OLDFUNC's PowerShell evaluation of STR formatted with ARGS.
 STR follows the same conventions as `exec-path-from-shell-printf'."
-  (if (not (member (file-name-nondirectory exec-path-from-shell-shell-name) '("pwsh.exe" "powershell.exe")))
+  (if (not (exec-path-from-powershell--powershell-shell-p))
       (funcall oldfunc str args)
     (let* ((decoded (exec-path-from-powershell--decode-escapes str))
            (values (exec-path-from-powershell--evaluate-expressions args))
@@ -370,7 +386,7 @@ If exec-path-from-shell-shell-name is not powershell.exe or pwsh.exe,
 just delegate to exec-path-from-shell-getenvs.
 
 The result is a list of (NAME . VALUE) pairs."
-  (if (not (member (file-name-nondirectory exec-path-from-shell-shell-name) '("pwsh.exe" "powershell.exe")))
+  (if (not (exec-path-from-powershell--powershell-shell-p))
       (funcall oldfunc names)
     (when (file-remote-p default-directory)
       (error "You cannot run exec-path-from-powershell from a remote buffer (Tramp, etc.)"))
@@ -384,13 +400,27 @@ The result is a list of (NAME . VALUE) pairs."
            (json-null nil))
       (json-read-from-string (substring raw (or (string-match "{\\s-*\"" raw) 0))))))
 
-(advice-add #'exec-path-from-shell-getenvs
-            :around
-            #'exec-path-from-powershell--getenvs)
+;;;###autoload
+(defun exec-path-from-powershell-enable ()
+  "Enable PowerShell-backed `exec-path-from-shell' integration."
+  (unless (advice-member-p #'exec-path-from-powershell--getenvs
+                           #'exec-path-from-shell-getenvs)
+    (advice-add #'exec-path-from-shell-getenvs
+                :around
+                #'exec-path-from-powershell--getenvs))
+  (unless (advice-member-p #'exec-path-from-powershell--printf
+                           #'exec-path-from-shell-printf)
+    (advice-add #'exec-path-from-shell-printf
+                :around
+                #'exec-path-from-powershell--printf)))
 
-(advice-add #'exec-path-from-shell-printf
-            :around
-            #'exec-path-from-powershell--printf)
+;;;###autoload
+(defun exec-path-from-powershell-disable ()
+  "Disable PowerShell-backed `exec-path-from-shell' integration."
+  (advice-remove #'exec-path-from-shell-getenvs
+                 #'exec-path-from-powershell--getenvs)
+  (advice-remove #'exec-path-from-shell-printf
+                 #'exec-path-from-powershell--printf))
 
 (provide 'exec-path-from-powershell)
 

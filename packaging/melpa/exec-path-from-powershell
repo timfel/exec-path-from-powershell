@@ -1,0 +1,3 @@
+(exec-path-from-powershell
+ :fetcher github
+ :repo "timfel/exec-path-from-powershell")
