@@ -88,12 +88,12 @@
                       '("PATH"))
                      '("PATH" "INCLUDE" "LIB"))))))
 
-(ert-deftest exec-path-from-powershell-enable-and-disable-manage-advice ()
+(ert-deftest exec-path-from-powershell-load-installs-advice ()
   (unwind-protect
       (progn
         (exec-path-from-powershell-disable)
-        (exec-path-from-powershell-enable)
-        (exec-path-from-powershell-enable)
+        (exec-path-from-powershell--enable)
+        (exec-path-from-powershell--enable)
         (should (advice-member-p #'exec-path-from-powershell--getenvs
                                  #'exec-path-from-shell-getenvs))
         (should (advice-member-p #'exec-path-from-powershell--printf

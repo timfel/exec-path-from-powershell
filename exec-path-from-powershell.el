@@ -25,17 +25,21 @@
 ;;; Commentary:
 
 ;; This package adds PowerShell support to the `exec-path-from-shell'
-;; workflow on Windows.  When enabled, calls made through
+;; workflow on Windows.  When the library is loaded, calls made through
 ;; `exec-path-from-shell-getenvs' and `exec-path-from-shell-printf' are
 ;; redirected to PowerShell whenever `exec-path-from-shell-shell-name'
 ;; names `pwsh.exe' or `powershell.exe'.
 ;;
 ;; Typical setup:
 ;;
-;;   (require 'exec-path-from-shell)
 ;;   (require 'exec-path-from-powershell)
 ;;   (setq exec-path-from-shell-shell-name "pwsh.exe")
-;;   (exec-path-from-powershell-enable)
+;;
+;; Or with use-package:
+;;
+;;   (use-package exec-path-from-powershell
+;;     :custom
+;;     (exec-path-from-shell-shell-name "pwsh.exe"))
 ;;
 ;; The package can also merge the Visual Studio developer environment
 ;; into the imported variables when desired.
@@ -400,9 +404,8 @@ The result is a list of (NAME . VALUE) pairs."
            (json-null nil))
       (json-read-from-string (substring raw (or (string-match "{\\s-*\"" raw) 0))))))
 
-;;;###autoload
-(defun exec-path-from-powershell-enable ()
-  "Enable PowerShell-backed `exec-path-from-shell' integration."
+(defun exec-path-from-powershell--enable ()
+  "Install PowerShell-backed advice for `exec-path-from-shell'."
   (unless (advice-member-p #'exec-path-from-powershell--getenvs
                            #'exec-path-from-shell-getenvs)
     (advice-add #'exec-path-from-shell-getenvs
@@ -421,6 +424,8 @@ The result is a list of (NAME . VALUE) pairs."
                  #'exec-path-from-powershell--getenvs)
   (advice-remove #'exec-path-from-shell-printf
                  #'exec-path-from-powershell--printf))
+
+(exec-path-from-powershell--enable)
 
 (provide 'exec-path-from-powershell)
 

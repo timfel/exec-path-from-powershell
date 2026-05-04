@@ -13,15 +13,22 @@ variables when desired.
 
 ## Installation
 
-Once the MELPA recipe is merged, install the package alongside
-`exec-path-from-shell` and enable it explicitly:
+Once the MELPA recipe is merged, install the package and set
+`exec-path-from-shell-shell-name` to PowerShell.  Loading
+`exec-path-from-powershell` installs the integration automatically:
 
 ```elisp
-(require 'exec-path-from-shell)
 (require 'exec-path-from-powershell)
 
 (setq exec-path-from-shell-shell-name "pwsh.exe")
-(exec-path-from-powershell-enable)
+```
+
+With `use-package`, the usual shape is:
+
+```elisp
+(use-package exec-path-from-powershell
+  :custom
+  (exec-path-from-shell-shell-name "pwsh.exe"))
 ```
 
 ## Development
@@ -61,7 +68,7 @@ make melpa-stable-sandbox
 ## MELPA Readiness Checklist
 
 - [x] Main library header includes lexical binding, package metadata, and GPL boilerplate.
-- [x] Public activation entry points are autoloadable via `exec-path-from-powershell-enable` and `exec-path-from-powershell-disable`.
+- [x] Loading the package installs idempotent advice automatically; `exec-path-from-powershell-disable` remains available for debugging.
 - [x] Repository includes `README.md`, `LICENSE`, a canonical MELPA recipe, and batch scripts for local checks.
 - [x] Local `make check` covers `checkdoc`, `package-lint`, `flycheck-package`, byte-compilation, and ERT.
 - [x] GitHub Actions runs the local check suite across multiple Emacs versions and validates the MELPA recipe.
