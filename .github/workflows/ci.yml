@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        emacs-version: ['27.1', '28.2', '29.4']
+        emacs-version: ['27.1', '28.2', '29.4', '30.2']
     env:
       HOME: ${{ github.workspace }}/.home
     steps:
