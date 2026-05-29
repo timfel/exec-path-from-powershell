@@ -26,8 +26,9 @@ With `use-package`:
 
 ```elisp
 (use-package exec-path-from-powershell
-  :custom
-  (exec-path-from-shell-shell-name "pwsh.exe"))
+  :after (exec-path-from-shell)
+  :vc (:url "https://github.com/timfel/exec-path-from-powershell" :branch "main" :rev "newest")
+  :custom (exec-path-from-shell-shell-name "pwsh.exe"))
 ```
 
 Then use `exec-path-from-shell` as usual, for example:
